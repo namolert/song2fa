@@ -1,0 +1,59 @@
+#root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100vw;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  text-align: center;
+}
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+
+.song-button {
+  padding: 10px;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.song-button.selected {
+  background-color: #f59e0b;
+}
+
+.action-button, .reset-button {
+  margin-top: 1rem;
+  padding: 10px;
+  background-color: #10b981;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.reset-button {
+  background-color: #ef4444;
+}
+
+.status-message {
+  margin-top: 1rem;
+  font-weight: bold;
+}
