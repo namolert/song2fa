@@ -58,14 +58,13 @@ export default function SongAuth() {
       const randomizedSequence = randomizeSequence(selectedSongs);
       localStorage.setItem("songSequence", JSON.stringify(randomizedSequence));
       
-      setStoredSequence(randomizedSequence); // Store randomized sequence
-      setSelectedSongs([]); // Reset selection
+      setStoredSequence(randomizedSequence);
+      setSelectedSongs([]);
       setSetupMode(false);
     }
   };
 
   const handleAuthenticate = () => {
-    // Compare auth attempt with the original selected order, not the randomized one
     const originalSequence = JSON.parse(localStorage.getItem("selectedSongs"));
     if (JSON.stringify(authAttempt) === JSON.stringify(originalSequence)) {
       setStatus("Authentication Successful!");
@@ -85,7 +84,6 @@ export default function SongAuth() {
     setSetupMode(true);
   };
 
-  // Randomize the sequence before the first authentication
   const randomizeSequence = (sequence) => {
     const shuffled = [...sequence];
     for (let i = shuffled.length - 1; i > 0; i--) {
