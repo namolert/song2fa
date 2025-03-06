@@ -1,7 +1,28 @@
 import { useState, useEffect } from "react";
 import "./App.css";
 
-const songs = ["Song A", "Song B", "Song C", "Song D", "Song E", "Song F"];
+const songs = [
+  "Blinding Lights - The Weeknd",
+  "Levitating - Dua Lipa",
+  "Shape of You - Ed Sheeran",
+  "Uptown Funk - Mark Ronson ft. Bruno Mars",
+  "Old Town Road - Lil Nas X",
+  "Happier Than Ever - Billie Eilish",
+  "Rolling in the Deep - Adele",
+  "Bad Guy - Billie Eilish",
+  "Stay - Justin Bieber & The Kid LAROI",
+  "Can't Stop the Feeling! - Justin Timberlake",
+  "Dance Monkey - Tones and I",
+  "Watermelon Sugar - Harry Styles",
+  "Rockstar - DaBaby ft. Roddy Ricch",
+  "Savage Love - Jawsh 685 & Jason Derulo",
+  "Good 4 U - Olivia Rodrigo",
+  "As It Was - Harry Styles",
+  "Shallow - Lady Gaga & Bradley Cooper",
+  "Don't Start Now - Dua Lipa",
+  "Bohemian Rhapsody - Queen",
+  "Take Me To Church - Hozier"
+];
 
 export default function SongAuth() {
   const [setupMode, setSetupMode] = useState(true);
@@ -20,7 +41,9 @@ export default function SongAuth() {
 
   const handleSongSelect = (song) => {
     if (setupMode) {
-      setSelectedSongs([...selectedSongs, song]);
+      if (!selectedSongs.includes(song)) {
+        setSelectedSongs([...selectedSongs, song]);
+      }
     } else {
       setAuthAttempt([...authAttempt, song]);
     }
@@ -28,15 +51,23 @@ export default function SongAuth() {
 
   const handleSetupComplete = () => {
     if (selectedSongs.length > 0) {
-      localStorage.setItem("songSequence", JSON.stringify(selectedSongs));
-      setStoredSequence(selectedSongs);
+      // Save the selected songs in the original order
+      localStorage.setItem("selectedSongs", JSON.stringify(selectedSongs));
+      
+      // Randomize the selected sequence for authentication
+      const randomizedSequence = randomizeSequence(selectedSongs);
+      localStorage.setItem("songSequence", JSON.stringify(randomizedSequence));
+      
+      setStoredSequence(randomizedSequence); // Store randomized sequence
       setSelectedSongs([]); // Reset selection
       setSetupMode(false);
     }
   };
 
   const handleAuthenticate = () => {
-    if (JSON.stringify(authAttempt) === JSON.stringify(storedSequence)) {
+    // Compare auth attempt with the original selected order, not the randomized one
+    const originalSequence = JSON.parse(localStorage.getItem("selectedSongs"));
+    if (JSON.stringify(authAttempt) === JSON.stringify(originalSequence)) {
       setStatus("Authentication Successful!");
     } else {
       setStatus("Authentication Failed. Try Again.");
@@ -46,6 +77,7 @@ export default function SongAuth() {
 
   const handleReset = () => {
     localStorage.removeItem("songSequence");
+    localStorage.removeItem("selectedSongs");
     setSelectedSongs([]);
     setStoredSequence([]);
     setAuthAttempt([]);
@@ -53,35 +85,63 @@ export default function SongAuth() {
     setSetupMode(true);
   };
 
+  // Randomize the sequence before the first authentication
+  const randomizeSequence = (sequence) => {
+    const shuffled = [...sequence];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
   return (
     <div className="container">
       <h1>{setupMode ? "Set Up Your Song Sequence" : "Authenticate"}</h1>
-
+      {status && <p className="status-message">{status}</p>}
       <div className="grid">
-        {songs.map((song, index) => (
-          <button
-            key={index}
-            className={`song-button ${
-              (setupMode && selectedSongs.includes(song)) || (!setupMode && authAttempt.includes(song))
-                ? "selected"
-                : ""
-            }`}
-            onClick={() => handleSongSelect(song)}
-          >
-            {song}
-          </button>
-        ))}
+        {setupMode
+          ? songs.map((song, index) => (
+              <button
+                key={index}
+                className={`song-button ${
+                  selectedSongs.includes(song) ? "selected" : ""
+                }`}
+                onClick={() => handleSongSelect(song)}
+              >
+                {song}
+                {selectedSongs.includes(song) && (
+                  <span className="order-number">
+                    {selectedSongs.indexOf(song) + 1}
+                  </span>
+                )}
+              </button>
+            ))
+          : storedSequence.map((song, index) => (
+              <button
+                key={index}
+                className={`song-button ${
+                  authAttempt.includes(song) ? "selected" : ""
+                }`}
+                onClick={() => handleSongSelect(song)}
+              >
+                {song}
+              </button>
+            ))}
       </div>
-
       {setupMode ? (
-        <button className="action-button" onClick={handleSetupComplete}>Save Sequence</button>
+        <button className="action-button" onClick={handleSetupComplete}>
+          Save Sequence
+        </button>
       ) : (
-        <button className="action-button" onClick={handleAuthenticate}>Authenticate</button>
+        <button className="action-button" onClick={handleAuthenticate}>
+          Authenticate
+        </button>
       )}
 
-      <button className="reset-button" onClick={handleReset}>Reset</button>
-
-      {status && <p className="status-message">{status}</p>}
+      <button className="reset-button" onClick={handleReset}>
+        Reset
+      </button>
     </div>
   );
 }

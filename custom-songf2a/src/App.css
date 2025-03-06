@@ -57,3 +57,9 @@ h1 {
   margin-top: 1rem;
   font-weight: bold;
 }
+
+.order-number {
+  font-size: 0.8rem;
+  color: rgb(18, 55, 218);
+  margin-left: 8px;
+}
