@@ -3,37 +3,33 @@ import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import "./App.css";
 
-const fetchSongs = async (query) => {
-  const allSongs = [
-    "Blinding Lights - The Weeknd",
-    "Levitating - Dua Lipa",
-    "Shape of You - Ed Sheeran",
-    "Uptown Funk - Mark Ronson ft. Bruno Mars",
-    "Old Town Road - Lil Nas X",
-    "Happier Than Ever - Billie Eilish",
-    "Rolling in the Deep - Adele",
-    "Bad Guy - Billie Eilish",
-    "Stay - Justin Bieber & The Kid LAROI",
-    "Can't Stop the Feeling! - Justin Timberlake",
-    "Dance Monkey - Tones and I",
-    "Watermelon Sugar - Harry Styles",
-    "Rockstar - DaBaby ft. Roddy Ricch",
-    "Savage Love - Jawsh 685 & Jason Derulo",
-    "Good 4 U - Olivia Rodrigo",
-    "As It Was - Harry Styles",
-    "Shallow - Lady Gaga & Bradley Cooper",
-    "Don't Start Now - Dua Lipa",
-    "Bohemian Rhapsody - Queen",
-    "Take Me To Church - Hozier"
-  ];
-  return allSongs.filter((song) =>
-    song.toLowerCase().includes(query.toLowerCase())
-  );
+const fetchSongs = async (query, token) => {
+  if (!query || !token) return [];
+  
+  try {
+    const response = await fetch(
+      `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=10`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Error fetching songs:", response.status, response.statusText);
+      return [];
+    }
+
+    const data = await response.json();
+    return data.tracks.items.map((track) => `${track.name} - ${track.artists.map((a) => a.name).join(", ")}`);
+  } catch (error) {
+    console.error("Error fetching songs:", error);
+    return [];
+  }
 };
 
 const ItemType = "SONG";
 
-// 🎵 Draggable Song Item
+// Draggable Song Item
 const SongItem = ({ song, index, moveSong, removeSong }) => {
   const [, ref] = useDrag({
     type: ItemType,
@@ -53,7 +49,7 @@ const SongItem = ({ song, index, moveSong, removeSong }) => {
   return (
     <div ref={(node) => ref(drop(node))} className="draggable-item">
       {index + 1}. {song} 
-      <button onClick={() => removeSong(song)}>❌</button>
+      <button onClick={() => removeSong(song)}>X</button>
     </div>
   );
 };
@@ -68,6 +64,39 @@ export default function SongAuth() {
   const [setupMode, setSetupMode] = useState(true);
   const [status, setStatus] = useState(null);
   const [shuffledOnce, setShuffledOnce] = useState(false);
+  const [token, setToken] = useState(null);
+
+  // Fetch Spotify Access Token
+  useEffect(() => {
+    const getAccessToken = async () => {
+      const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
+      const clientSecret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET;
+      const credentials = btoa(`${clientId}:${clientSecret}`);
+
+      try {
+        const response = await fetch("https://accounts.spotify.com/api/token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: `Basic ${credentials}`,
+          },
+          body: "grant_type=client_credentials",
+        });
+
+        if (!response.ok) {
+          console.error("Failed to get access token:", response.status, response.statusText);
+          return;
+        }
+
+        const data = await response.json();
+        setToken(data.access_token);
+      } catch (error) {
+        console.error("Error fetching access token:", error);
+      }
+    };
+
+    getAccessToken();
+  }, []);
 
   useEffect(() => {
     const savedSequence = JSON.parse(localStorage.getItem("songSequence"));
@@ -79,8 +108,8 @@ export default function SongAuth() {
 
   const handleSearch = async (e) => {
     setSearchQuery(e.target.value);
-    if (e.target.value.length > 1) {
-      const results = await fetchSongs(e.target.value);
+    if (e.target.value.length > 1 && token) {
+      const results = await fetchSongs(e.target.value, token);
       setSearchResults(results);
     } else {
       setSearchResults([]);
@@ -116,7 +145,7 @@ export default function SongAuth() {
   };
 
   const shuffleOnce = () => {
-    if (!shuffledOnce) {
+    if (!shuffledOnce && storedSequence.length > 0) {
       const shuffled = [...storedSequence].sort(() => Math.random() - 0.5);
       setShuffledSongs(shuffled);
       setShuffledOnce(true);
@@ -125,9 +154,9 @@ export default function SongAuth() {
 
   const handleAuthenticate = () => {
     if (JSON.stringify(authAttempt) === JSON.stringify(storedSequence)) {
-      setStatus("✅ Authentication Successful!");
+      setStatus("Authentication Successful!");
     } else {
-      setStatus("❌ Authentication Failed. Try Again.");
+      setStatus("Authentication Failed. Try Again.");
     }
     setAuthAttempt([]);
   };
@@ -157,7 +186,6 @@ export default function SongAuth() {
 
         {setupMode ? (
           <>
-            {/* Search Bar */}
             <input
               type="text"
               placeholder="Search for a song..."
@@ -165,7 +193,6 @@ export default function SongAuth() {
               onChange={handleSearch}
             />
 
-            {/* Search Results */}
             {searchResults.length > 0 && (
               <div className="search-results">
                 {searchResults.map((song, index) => (
@@ -174,13 +201,12 @@ export default function SongAuth() {
                     className="search-item"
                     onClick={() => addToPlaylist(song)}
                   >
-                    {song} ➕
+                    {song} +
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Playlist Setup with Drag-and-Drop */}
             <h2>Your Playlist</h2>
             <div className="playlist">
               {playlist.map((song, index) => (
@@ -200,9 +226,8 @@ export default function SongAuth() {
           </>
         ) : (
           <>
-            <h2>Select Songs in the Correct Order</h2>
+            <h3>Select Songs in the Correct Order</h3>
 
-            {/* Shuffle Once Before First Auth Attempt */}
             {shuffleOnce()}
 
             <div className="grid">
