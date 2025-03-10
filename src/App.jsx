@@ -65,6 +65,7 @@ export default function SongAuth() {
   const [status, setStatus] = useState(null);
   const [shuffledOnce, setShuffledOnce] = useState(false);
   const [token, setToken] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Fetch Spotify Access Token
   useEffect(() => {
@@ -158,8 +159,10 @@ export default function SongAuth() {
     } else {
       setStatus("Authentication Failed. Try Again.");
     }
+    setIsAuthenticated(true);
     setAuthAttempt([]);
   };
+  
 
   const handleReset = () => {
     localStorage.removeItem("songSequence");
@@ -170,10 +173,11 @@ export default function SongAuth() {
     setStatus(null);
     setSetupMode(true);
     setShuffledOnce(false);
+    setIsAuthenticated(false);
   };
 
   const handleSongClick = (song) => {
-    if (!setupMode) {
+    if (!setupMode && !isAuthenticated) {
       setAuthAttempt([...authAttempt, song]);
     }
   };
@@ -234,19 +238,22 @@ export default function SongAuth() {
               {shuffledSongs.map((song, index) => (
                 <button
                   key={index}
-                  className={`song-button ${
-                    authAttempt.includes(song) ? "selected" : ""
-                  }`}
+                  className={`song-button ${authAttempt.includes(song) ? "selected" : ""} ${isAuthenticated ? "disabled-button" : ""}`} 
                   onClick={() => handleSongClick(song)}
+                  disabled={isAuthenticated}
                 >
                   {song}
                 </button>
               ))}
             </div>
-
-            <button className="action-button" onClick={handleAuthenticate}>
+            <button
+              className={`action-button ${isAuthenticated ? "disabled-button" : ""}`} 
+              onClick={handleAuthenticate}
+              disabled={isAuthenticated}
+            >
               Authenticate
             </button>
+
           </>
         )}
 
