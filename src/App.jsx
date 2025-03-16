@@ -55,17 +55,22 @@ const SongItem = ({ song, index, moveSong, removeSong }) => {
 };
 
 export default function SongAuth() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [playlist, setPlaylist] = useState([]);
   const [storedSequence, setStoredSequence] = useState([]);
   const [shuffledSongs, setShuffledSongs] = useState([]);
   const [authAttempt, setAuthAttempt] = useState([]);
+  const [attemptCount, setAttemptCount] = useState(0);
   const [setupMode, setSetupMode] = useState(true);
   const [status, setStatus] = useState(null);
   const [shuffledOnce, setShuffledOnce] = useState(false);
   const [token, setToken] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [setupComplete, setSetupComplete] = useState(false);
 
   // Fetch Spotify Access Token
   useEffect(() => {
@@ -98,6 +103,15 @@ export default function SongAuth() {
 
     getAccessToken();
   }, []);
+
+  const handleLogin = () => {
+    if (username && password) {
+      setIsLoggedIn(true);
+    } else {
+      alert("Please enter a username and password.");
+    }
+  };
+
 
   useEffect(() => {
     const savedSequence = JSON.parse(localStorage.getItem("songSequence"));
@@ -139,6 +153,7 @@ export default function SongAuth() {
       localStorage.setItem("songSequence", JSON.stringify(playlist));
       setStoredSequence(playlist);
       setSetupMode(false);
+      setSetupComplete(true);
       setShuffledOnce(false);
       setAuthAttempt([]);
       setStatus(null);
@@ -154,13 +169,26 @@ export default function SongAuth() {
   };
 
   const handleAuthenticate = () => {
-    if (JSON.stringify(authAttempt) === JSON.stringify(storedSequence)) {
+    if (authAttempt.length !== storedSequence.length) {
+      setStatus("Incorrect number of selections!");
+      return;
+    }
+  
+    const isCorrect = authAttempt.every((song, index) => song === storedSequence[index]);
+  
+    if (isCorrect) {
+      setIsAuthenticated(true);
       setStatus("Authentication Successful!");
     } else {
-      setStatus("Authentication Failed. Try Again.");
+      if (attemptCount === 0) {
+        setStatus("Incorrect sequence! Try again.");
+        setAuthAttempt([]); // Reset selected songs for another attempt
+        setAttemptCount(attemptCount + 1); // Increment attempt count
+      } else {
+        setStatus("Authentication Failed! No more attempts.");
+        setIsAuthenticated(true); // Disable buttons after second failure
+      }
     }
-    setIsAuthenticated(true);
-    setAuthAttempt([]);
   };
   
 
@@ -174,6 +202,14 @@ export default function SongAuth() {
     setSetupMode(true);
     setShuffledOnce(false);
     setIsAuthenticated(false);
+    setIsLoggedIn(false);
+    setSetupComplete(false);
+    setAttemptCount(0);
+  };
+
+  const handleResetSelected = () => {
+    setAuthAttempt([]);
+    setStatus(null);
   };
 
   const handleSongClick = (song) => {
@@ -185,18 +221,19 @@ export default function SongAuth() {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="container">
-        <h1>{setupMode ? "Set Up Your Song Sequence" : "Authenticate"}</h1>
-        {status && <p className="status-message">{status}</p>}
-
-        {setupMode ? (
+        {!setupComplete ? (
+          // Step 1: Setup Sequence
           <>
+            <h1>Set Up Your Song Sequence</h1>
+            {status && <p className="status-message">{status}</p>}
+  
             <input
               type="text"
               placeholder="Search for a song..."
               value={searchQuery}
               onChange={handleSearch}
             />
-
+  
             {searchResults.length > 0 && (
               <div className="search-results">
                 {searchResults.map((song, index) => (
@@ -210,7 +247,7 @@ export default function SongAuth() {
                 ))}
               </div>
             )}
-
+  
             <h2>Your Playlist</h2>
             <div className="playlist">
               {playlist.map((song, index) => (
@@ -223,17 +260,43 @@ export default function SongAuth() {
                 />
               ))}
             </div>
-
+  
             <button className="action-button" onClick={handleSetupComplete}>
               Save Sequence
             </button>
+  
+            <button className="reset-button" onClick={handleReset}>
+              Reset
+            </button>
           </>
+        ) : !isLoggedIn ? (
+          // Step 2: Login after sequence setup
+          <div className="login-section">
+            <h2>Login</h2>
+            <input
+              type="text"
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button onClick={handleLogin}>Login</button>
+          </div>
         ) : (
+          // Step 3: Authenticate with the selected song sequence
           <>
+            <h1>Authenticate</h1>
+            {status && <p className="status-message">{status}</p>}
+  
             <h3>Select Songs in the Correct Order</h3>
-
+  
             {shuffleOnce()}
-
+  
             <div className="grid">
               {shuffledSongs.map((song, index) => (
                 <button
@@ -246,6 +309,7 @@ export default function SongAuth() {
                 </button>
               ))}
             </div>
+  
             <button
               className={`action-button ${isAuthenticated ? "disabled-button" : ""}`} 
               onClick={handleAuthenticate}
@@ -254,12 +318,19 @@ export default function SongAuth() {
               Authenticate
             </button>
 
+            <button 
+              className={`reset-button ${isAuthenticated ? "disabled-button" : ""}`} 
+              onClick={handleResetSelected}
+              disabled={isAuthenticated}
+            >
+              Reset Selected Song
+            </button>
+
+            <button className="reset-button" onClick={handleReset}>
+              Start Again
+            </button>
           </>
         )}
-
-        <button className="reset-button" onClick={handleReset}>
-          Reset
-        </button>
       </div>
     </DndProvider>
   );
